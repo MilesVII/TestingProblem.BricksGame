@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="app_name">Seventh Arkanoid</string>
+    <string name="hello_world">Hello world!</string>
+    <string name="title_activity_game">Game</string>
+
+</resources>
