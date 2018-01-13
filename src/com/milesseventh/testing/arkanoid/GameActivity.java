@@ -2,8 +2,8 @@ package com.milesseventh.testing.arkanoid;
 
 import android.app.Activity;
 import android.content.Context;
+import android.content.pm.ActivityInfo;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.MotionEvent;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
@@ -24,6 +24,8 @@ public class GameActivity extends Activity{
 				public boolean onTouch(View v, MotionEvent me){
 					if (ml != null){
 						ml.game.touch.x = me.getX();
+						if (me.getAction() == MotionEvent.ACTION_DOWN)
+							ml.game.justTouched = true;
 					}
 					return true;
 				}
@@ -48,9 +50,18 @@ public class GameActivity extends Activity{
 		}
 	}
 	
+	public HarvesterOfEyes eyeless;
+	
 	@Override
 	protected void onCreate(Bundle savedInstanceState){
 		super.onCreate(savedInstanceState);
-		setContentView(new HarvesterOfEyes(this));
+		this.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
+		eyeless = new HarvesterOfEyes(this);
+		setContentView(eyeless);
+	}
+	
+	@Override
+	public void onBackPressed(){
+		eyeless.ml.game.isPaused = true;
 	}
 }

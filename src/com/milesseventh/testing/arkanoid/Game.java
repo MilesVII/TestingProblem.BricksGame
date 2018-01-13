@@ -10,50 +10,73 @@ import android.graphics.Paint.Align;
 
 public class Game {	
 	class Ball {
-		public static final int NO_BLOCK = -1;
 		Vector position, direction;
-		int block = NO_BLOCK;
 	}
 	
 	class CastResult {
 		float distance; 
 		boolean isHorizontal, isPaddle = false;
+		int block = NO_BLOCK;
 	}
 	
 	public static final float PADDLE_YR        = .1f, 
 	                          PADDLE_WR_MAX    = .24f, 
 	                          BLOCKS_FIELD_HR  = .45f,
 	                          SPEED_MAX        = 10f;
-	public static final int BLOCKS_IN_ROW      = 27, 
-	                        BLOCKS_IN_COLUMN   = 12, 
+	public static final int BLOCKS_IN_ROW      = 23, 
+	                        BLOCKS_IN_COLUMN   = 10, 
 	                        LEVELS_MAX         = 17,
-	                        RESERVED_BALLS_MAX = 7;
+	                        RESERVED_BALLS_MAX = 7,
+	                        NO_BLOCK = -1;
 	public float paddleX = -1;
 	public ArrayList<Ball> balls = new ArrayList<Ball>(), 
 	                       toBeRemoved = new ArrayList<Ball>();
 	public float[] blocks = new float[BLOCKS_IN_ROW * BLOCKS_IN_COLUMN];
-	public Paint p = new Paint();
+	public Paint pain      = new Paint(), 
+	             titlePain = new Paint();
 	public int w, h;
 	public float maxCollisionDistance, BLOCK_W, BLOCK_H;
 	public Vector touch = new Vector(-1, 0);
+	public boolean justTouched = false;
 	public Random r = new Random();
 	
 	public int level = 0, score = 0, reservedBalls = RESERVED_BALLS_MAX / 2;
 	public float PADDLE_WR, SPEED, BALL_SPAWN_PROB;
 	
-	public float getCurve(float x){
-		x = clamp(x, 0, 1);
-		return (float)Math.sin(x * Math.PI - Math.PI / 2);
+	///////////////////////////////////////////////////////////////////////////////////
+	//Game events
+	
+	public boolean isGameStarted  = false,
+	               levelIsRunning = false,
+	               isPaused       = true,
+	               isTitleShowing = true,
+	               keepRunning    = true;
+	public void onGameStart(Canvas canvas){
+			w = canvas.getWidth(); 
+			h = canvas.getHeight();
+			maxCollisionDistance = Vector.getVector(w, h).length();
+			BLOCK_W = w / BLOCKS_IN_ROW;
+			BLOCK_H = h * BLOCKS_FIELD_HR / BLOCKS_IN_COLUMN;
+			
+			pain.setColor(Color.BLACK);
+			pain.setTextAlign(Align.LEFT);
+			pain.setTextSize(16);
+			
+			titlePain.setColor(Color.rgb(218, 64, 0));
+			titlePain.setTextAlign(Align.CENTER);
+			titlePain.setTextSize(21);
+			
+			paddleX = w / 2;
+			isGameStarted = true;
 	}
 	
 	public void onLevelStart(){
 		++level;
 		reservedBalls = Math.min(++reservedBalls, RESERVED_BALLS_MAX);
 		float x = Math.min(1, (float) level /  LEVELS_MAX);
-		PADDLE_WR = lerp(x, PADDLE_WR_MAX, PADDLE_WR_MAX * .4f);//PADDLE_WR_MAX * (1 - getCurve(x)) * .6f + .4f;
-		SPEED = lerp(x, SPEED_MAX * .5f , SPEED_MAX);//SPEED_MAX * getCurve(x) * .6f + .4f;
-		//SPEED = 7;
-		BALL_SPAWN_PROB = lerp(x, .2f, .01f);//(1 - getCurve(x)) * .4f + .5f;
+		PADDLE_WR = lerp(x, PADDLE_WR_MAX, PADDLE_WR_MAX * .4f);
+		SPEED = lerp(x, SPEED_MAX * .5f , SPEED_MAX);
+		BALL_SPAWN_PROB = lerp(x, .2f, .01f);
 		generateBlocks();
 		
 		balls.clear();
@@ -64,72 +87,29 @@ public class Game {
 		balls.add(ball);
 		
 		levelIsRunning = true;
+		isPaused = true;
 	}
 	
-	public Vector generateDirection(){
-		Vector t = new Vector();
-		float alignment;
-		do {
-			t = new Vector(r.nextFloat() * 4 - 2, 
-			                           r.nextFloat() * 4 - 2);
-			t.normalize();
-			alignment = Math.abs(Vector.dot(t, Vector.getVector(1, 0)));
-		} while(alignment < .2f || alignment > .8f);
-		if (t.y < 0)
-			t.y *= -1;
-		return t;
-	}
-	
-	public Vector getBlockPosition(int id, boolean centered){
-		Vector v = new Vector();
-		v.x = id % BLOCKS_IN_ROW;
-		v.y = (id - v.x) / BLOCKS_IN_ROW;
-		if (centered){
-			v.x += .5f;
-			v.y += .5f;
-		}
-		v.x *= BLOCK_W;
-		v.y *= BLOCK_H;
-		return v;
-	}
-	
-	public void generateBlocks(){
-		SimplexNoise sn = new SimplexNoise();
-		for (int i = 0; i < blocks.length; ++i){
-			Vector v = getBlockPosition(i, true);
-			blocks[i] = Math.round(sn.eval(v.x / w * 10, v.y / h * 10) + .3f);
-		}
-	}
-	
-	public boolean isAnyBlocksLeft(){
-		for (float b: blocks)
-			if (b > 0)
-				return true;
-		return false;
-	}
-	
-	public boolean isGameStarted = false,
-	               levelIsRunning = false;
-	public void onGameStart(Canvas canvas){
-			w = canvas.getWidth(); 
-			h = canvas.getHeight();
-			maxCollisionDistance = Vector.getVector(w, h).length();
-			BLOCK_W = w / BLOCKS_IN_ROW;
-			BLOCK_H = h * BLOCKS_FIELD_HR / BLOCKS_IN_COLUMN;
-			p.setColor(Color.WHITE);
-			p.setTextAlign(Align.LEFT);
-			p.setTextSize(16);
-			paddleX = w / 2;
-			isGameStarted = true;
+	public float getCurve(float x){
+		x = clamp(x, 0, 1);
+		return (float)Math.sin(x * Math.PI - Math.PI / 2);
 	}
 
-	public void update(Canvas canvas, float dt){
+	public boolean update(Canvas canvas, float dt){
 		if (!isGameStarted)
 			onGameStart(canvas);
 		if (!levelIsRunning)
 			onLevelStart();
 
+		if (justTouched)
+			if (isGameOver())
+				keepRunning = false;
+			else
+				isPaused = false;
+		justTouched = false;
+		
 		if (touch.x >= 0){
+			isTitleShowing = false;
 			float minPaddlePosition = PADDLE_WR / 2f * w;
 			float maxPaddlePosition = w - PADDLE_WR / 2f * w;
 			paddleX = clamp(touch.x, minPaddlePosition, maxPaddlePosition);
@@ -137,41 +117,54 @@ public class Game {
 		}
 
 		//Balls processing
-		for (int i = 0; i < balls.size(); ++i){
-			shift(balls.get(i), SPEED);
-			if (balls.get(i).position.y > h)
-				toBeRemoved.add(balls.get(i));
-			canvas.drawCircle(balls.get(i).position.x, balls.get(i).position.y, 3, p);
-		}
-		for (Ball b: toBeRemoved)
-			balls.remove(b);
-		toBeRemoved.clear();
-		if (balls.isEmpty()){
-			if (reservedBalls == 0){
-				//game is over
-			} else {
-				--reservedBalls;
-				Ball ball = new Ball();
-				ball.position = new Vector(w / 2, h / 2);
-				ball.direction = generateDirection();
-				balls.add(ball);
+		if (!isPaused){
+				for (int i = 0; i < balls.size(); ++i){
+					shift(balls.get(i), SPEED);
+					if (balls.get(i).position.y > h)
+						toBeRemoved.add(balls.get(i));
+					canvas.drawCircle(balls.get(i).position.x, balls.get(i).position.y, 3, pain);
+				}
+			for (Ball b: toBeRemoved)
+				balls.remove(b);
+			toBeRemoved.clear();
+			if (balls.isEmpty()){
+				if (reservedBalls == 0){
+					//game is over
+					isPaused = true;
+				} else {
+					--reservedBalls;
+					Ball ball = new Ball();
+					ball.position = new Vector(w / 2, h / 2);
+					ball.direction = generateDirection();
+					balls.add(ball);
+				}
 			}
+	
+			//Paddle rendering
+			canvas.drawLine(paddleX - PADDLE_WR * w / 2, h * (1 - PADDLE_YR), 
+			                paddleX + PADDLE_WR * w / 2, h * (1 - PADDLE_YR), pain);
 		}
-
-		//Paddle rendering
-		canvas.drawLine(paddleX - PADDLE_WR * w / 2, h * (1 - PADDLE_YR), 
-		                paddleX + PADDLE_WR * w / 2, h * (1 - PADDLE_YR), p);
-
 		//Blocks rendering
-		for (int i = 0; i < BLOCKS_IN_ROW; ++i)
-			for (int j = 0; j < BLOCKS_IN_COLUMN; ++j)
-				if (blocks[i + j * BLOCKS_IN_ROW] > 0)
-					canvas.drawRect(i * BLOCK_W, j * BLOCK_H, 
-					                (i + 1) * BLOCK_W, (j + 1) * BLOCK_H, p);
+		if (!isTitleShowing)
+			for (int i = 0; i < BLOCKS_IN_ROW; ++i)
+				for (int j = 0; j < BLOCKS_IN_COLUMN; ++j)
+					if (blocks[i + j * BLOCKS_IN_ROW] > 0)
+						canvas.drawRect(i * BLOCK_W, j * BLOCK_H, 
+						                (i + 1) * BLOCK_W, (j + 1) * BLOCK_H, pain);
 		
 		//Status bar
-		canvas.drawText(String.format("Level %3d | Balls available %1d | Score %4d | Balls on level %3d | Speed %.2f | PaddleWR %.2f | Prob %.1f",
-		                              level, reservedBalls, score, balls.size(), SPEED, PADDLE_WR, BALL_SPAWN_PROB), 5, h, p);
+		if (isPaused){
+			canvas.drawText(isTitleShowing ? "Seventh Block Kuzushi by Miles Seventh" :
+			                   (isGameOver() ? ("Game is over. Your score: " + score) : "PAUSED"), 
+			                w / 2, h / 2, titlePain);
+			canvas.drawText("Tap to play", 5, h - 5, pain);
+		} else
+			canvas.drawText(String.format("Level %3d | Balls available %1d | Score %4d | ",
+			//                            + "Balls on level %3d | Speed %.2f | PaddleWR %.2f | Prob %.1f",
+			                              level, reservedBalls, score/*, balls.size(), SPEED, 
+			                              PADDLE_WR, BALL_SPAWN_PROB*/), 5, h - 5, pain);
+		
+		return keepRunning;
 	}
 	
 	///////////////////////////////////////////////////////////////////////////////////
@@ -187,23 +180,24 @@ public class Game {
 			if (cr.isHorizontal){
 				if (cr.isPaddle){
 					ball.direction.x = ball.position.x - paddleX;
-					ball.direction.y = -PADDLE_WR * w / 2;
+					if (Math.abs(ball.direction.x) < 1)
+						ball.direction.x += 2;
+					ball.direction.y = -PADDLE_WR * w / 2.2f;
 					ball.direction.normalize();
 				} else
 					ball.direction.y *= -1;
 			} else {
 				ball.direction.x *= -1;
 			}
-			if (ball.block != Ball.NO_BLOCK){
-				blocks[ball.block] = 0;
+			if (cr.block != NO_BLOCK){
+				blocks[cr.block] = 0;
 				if (r.nextFloat() < BALL_SPAWN_PROB){
 					Ball b = new Ball();
 					b.direction = generateDirection();
-					b.position = getBlockPosition(ball.block, true);
+					b.position = getBlockPosition(cr.block, true);
 					balls.add(b);
 				}
 				++score;
-				ball.block = Ball.NO_BLOCK;
 				
 				if (!isAnyBlocksLeft())
 					levelIsRunning = false;
@@ -268,11 +262,9 @@ public class Game {
 					CastResult xray = EDToBrick(ball, i, j);
 					if (xray.distance < min.distance){
 						min = xray;
-						ball.block = i + j * BLOCKS_IN_ROW;
+						min.block = i + j * BLOCKS_IN_ROW;
 					}
 				}
-		if (min.distance == maxCollisionDistance)
-			ball.block = Ball.NO_BLOCK;
 		return min;
 	}
 	
@@ -334,6 +326,53 @@ public class Game {
 	
 	///////////////////////////////////////////////////////////////////////////////////
 	//Utils
+	
+	public Vector generateDirection(){
+		Vector t = new Vector();
+		float alignment;
+		do {
+			t = new Vector(r.nextFloat() * 4 - 2, 
+			                           r.nextFloat() * 4 - 2);
+			t.normalize();
+			alignment = Math.abs(Vector.dot(t, Vector.getVector(1, 0)));
+		} while(alignment < .2f || alignment > .8f);
+		if (t.y < 0)
+			t.y *= -1;
+		return t;
+	}
+	
+	SimplexNoise sn = new SimplexNoise();
+	public void generateBlocks(){
+		int seed = r.nextInt();
+		for (int i = 0; i < blocks.length; ++i){
+			Vector v = getBlockPosition(i, true);
+			blocks[i] = Math.round(sn.eval(v.x / w * 10, v.y / h * 10, seed) + .3f);
+		}
+	}
+	
+	public boolean isAnyBlocksLeft(){
+		for (float b: blocks)
+			if (b > 0)
+				return true;
+		return false;
+	}
+	
+	public Vector getBlockPosition(int id, boolean centered){
+		Vector v = new Vector();
+		v.x = id % BLOCKS_IN_ROW;
+		v.y = (id - v.x) / BLOCKS_IN_ROW;
+		if (centered){
+			v.x += .5f;
+			v.y += .5f;
+		}
+		v.x *= BLOCK_W;
+		v.y *= BLOCK_H;
+		return v;
+	}
+	
+	public boolean isGameOver(){
+		return reservedBalls == 0 && balls.isEmpty();
+	}
 	
 	public float clamp(float x, float min, float max){
 		return Math.min(Math.max(min, x), max);

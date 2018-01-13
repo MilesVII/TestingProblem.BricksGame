@@ -18,8 +18,9 @@ public class MainLoop extends Thread {
 				running = false;
 				break;
 			}
-			c.drawColor(Color.DKGRAY);    //Clear drawing surface
-			game.update(c, dt);           //Updating game state
+			c.drawColor(Color.WHITE);
+			if (!game.update(c, dt))
+				game = new Game();
 			dt = System.nanoTime() - dt;
 			sh.unlockCanvasAndPost(c);
 		}
