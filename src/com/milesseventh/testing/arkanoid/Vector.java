@@ -15,7 +15,20 @@ public class Vector {
 		x = v.x; y = v.y;
 	}
 
+	public float distance(Vector v){
+		return distance(this, v);
+	}
+
+	public static float distance(Vector a, Vector b){
+		return Vector.getVector(a).sub(b).length();
+		
+	}
+
 	public float length(){
+		return length(x, y);
+	}
+
+	public static float length(float x, float y){
 		return (float)Math.sqrt(x * x + y * y);
 	}
 
@@ -27,8 +40,14 @@ public class Vector {
 		mimic(scale(1 / length()));
 	}
 
-	public void add(Vector v){
+	public Vector add(Vector v){
 		x += v.x; y += v.y;
+		return this;
+	}
+
+	public Vector sub(Vector v){
+		x -= v.x; y -= v.y;
+		return this;
 	}
 
 	//Processed vectors are loaded from pool and should not be used as global values
@@ -54,7 +73,7 @@ public class Vector {
 	}
 
 	//Vector pool
-	private static final int VECTORS_IN_POOL = 16;
+	private static final int VECTORS_IN_POOL = 512;
 	private static Vector[] vpool = new Vector[VECTORS_IN_POOL];
 	private static int vectorsCounter = 0, holder;
 	public static Vector getVector(){//new Vector2() alternative

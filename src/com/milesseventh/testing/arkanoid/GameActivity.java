@@ -22,7 +22,6 @@ public class GameActivity extends Activity{
 			setOnTouchListener(new OnTouchListener(){
 				@Override
 				public boolean onTouch(View v, MotionEvent me){
-					Log.d("...", "" + me.getX() + "\n");
 					if (ml != null){
 						ml.game.touch.x = me.getX();
 					}
