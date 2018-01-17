@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.pm.ActivityInfo;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.view.MotionEvent;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
@@ -41,6 +42,7 @@ public class GameActivity extends Activity{
 			//Start game when drawing surface is available
 			ml = new MainLoop();
 			ml.sh = sh;
+			ml.sp = PreferenceManager.getDefaultSharedPreferences(getContext());
 			ml.start();
 		}
 
@@ -63,5 +65,6 @@ public class GameActivity extends Activity{
 	@Override
 	public void onBackPressed(){
 		eyeless.ml.game.isPaused = true;
+		eyeless.ml.game.save();
 	}
 }

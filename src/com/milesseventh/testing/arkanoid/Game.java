@@ -3,6 +3,8 @@ package com.milesseventh.testing.arkanoid;
 import java.util.ArrayList;
 import java.util.Random;
 
+import android.content.SharedPreferences;
+import android.content.SharedPreferences.Editor;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
@@ -22,7 +24,7 @@ public class Game {
 	public static final float PADDLE_YR        = .1f, 
 	                          PADDLE_WR_MAX    = .24f, 
 	                          BLOCKS_FIELD_HR  = .45f,
-	                          SPEED_MAX        = 10f;
+	                          SPEED_MAX        = .5f;
 	public static final int BLOCKS_IN_ROW      = 23, 
 	                        BLOCKS_IN_COLUMN   = 10, 
 	                        LEVELS_MAX         = 17,
@@ -68,15 +70,18 @@ public class Game {
 			
 			paddleX = w / 2;
 			isGameStarted = true;
+			
+			if (load()){
+				levelIsRunning = true;
+				isTitleShowing = false;
+				loadLevelParameters();
+			}
 	}
 	
 	public void onLevelStart(){
 		++level;
 		reservedBalls = Math.min(++reservedBalls, RESERVED_BALLS_MAX);
-		float x = Math.min(1, (float) level /  LEVELS_MAX);
-		PADDLE_WR = lerp(x, PADDLE_WR_MAX, PADDLE_WR_MAX * .4f);
-		SPEED = lerp(x, SPEED_MAX * .5f , SPEED_MAX);
-		BALL_SPAWN_PROB = lerp(x, .2f, .01f);
+		loadLevelParameters();
 		generateBlocks();
 		
 		balls.clear();
@@ -88,6 +93,16 @@ public class Game {
 		
 		levelIsRunning = true;
 		isPaused = true;
+		
+		if (level != 1)
+			save();
+	}
+	
+	public void loadLevelParameters(){
+		float x = Math.min(1, (float) level /  LEVELS_MAX);
+		PADDLE_WR = lerp(x, PADDLE_WR_MAX, PADDLE_WR_MAX * .4f);
+		SPEED = lerp(x, SPEED_MAX * .7f , SPEED_MAX);
+		BALL_SPAWN_PROB = lerp(x, .2f, .01f);
 	}
 	
 	public float getCurve(float x){
@@ -119,7 +134,7 @@ public class Game {
 		//Balls processing
 		if (!isPaused){
 				for (int i = 0; i < balls.size(); ++i){
-					shift(balls.get(i), SPEED);
+					shift(balls.get(i), dt * SPEED);
 					if (balls.get(i).position.y > h)
 						toBeRemoved.add(balls.get(i));
 					canvas.drawCircle(balls.get(i).position.x, balls.get(i).position.y, 3, pain);
@@ -131,6 +146,7 @@ public class Game {
 				if (reservedBalls == 0){
 					//game is over
 					isPaused = true;
+					resetSave();
 				} else {
 					--reservedBalls;
 					Ball ball = new Ball();
@@ -380,5 +396,58 @@ public class Game {
 	
 	public float lerp(float percent, float a, float b){
 		return a + (b - a) * percent;
+	}
+	
+	/////
+	//
+	
+	SharedPreferences settings;
+	
+	public void save(){
+		Editor e = settings.edit();
+		e.clear();
+		e.putInt("LVL", level);
+		for (int i = 0; i < blocks.length; ++i)
+			e.putFloat("BLOCK " + i, blocks[i]);
+		e.putInt("B_COUNT", balls.size());
+		e.putInt("R_COUNT", reservedBalls);
+		e.putInt("SCORE", score);
+		for (int i = 0; i < balls.size(); ++i){
+			e.putFloat("B " + i + "XP", balls.get(i).position.x);
+			e.putFloat("B " + i + "YP", balls.get(i).position.y);
+			
+			e.putFloat("B " + i + "XD", balls.get(i).direction.x);
+			e.putFloat("B " + i + "YD", balls.get(i).direction.y);
+		}
+		e.commit();
+	}
+	
+	public boolean load(){
+		int l = settings.getInt("LVL", -1);
+		
+		if (l == -1)
+			return false;
+		else
+			level = l;
+		for (int i = 0; i < blocks.length; ++i)
+			blocks[i] = settings.getFloat("BLOCK " + i, blocks[i]);
+		int bcount = settings.getInt("B_COUNT", 0);
+		reservedBalls = settings.getInt("R_COUNT", 0);
+		score = settings.getInt("SCORE", 0);
+		for (int i = 0; i < bcount; ++i){
+			Ball b = new Ball();
+			b.position  = new Vector(settings.getFloat("B " + i + "XP", 0), settings.getFloat("B " + i + "YP", 0));
+			b.direction = new Vector(settings.getFloat("B " + i + "XD", 0), settings.getFloat("B " + i + "YD", 0));
+			balls.add(b);
+		}
+		
+		isPaused = true;
+		return true;
+	}
+	
+	public void resetSave(){
+		Editor e = settings.edit();
+		e.clear();
+		e.commit();
 	}
 }

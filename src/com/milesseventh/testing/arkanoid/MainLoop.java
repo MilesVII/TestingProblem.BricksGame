@@ -1,17 +1,22 @@
 package com.milesseventh.testing.arkanoid;
 
+import android.content.SharedPreferences;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.util.Log;
 import android.view.SurfaceHolder;
 
 public class MainLoop extends Thread {
 	public SurfaceHolder sh;
+	public SharedPreferences sp;
 	public boolean running = true;
 	public Game game = new Game();
-	public float dt = 0;
+	public long time;;
 	
 	@Override
 	public void run(){
+		game.settings = sp;
+		time = System.nanoTime();
 		while (running){
 			Canvas c = sh.lockCanvas();
 			if (c == null){
@@ -19,9 +24,12 @@ public class MainLoop extends Thread {
 				break;
 			}
 			c.drawColor(Color.WHITE);
-			if (!game.update(c, dt))
+			if (!game.update(c, (float)(System.nanoTime() - time) / 1000000f)){
 				game = new Game();
-			dt = System.nanoTime() - dt;
+				game.settings = sp;
+			}
+			//Log.d("DT", "" + (int)(System.nanoTime() - time));
+			time = System.nanoTime();
 			sh.unlockCanvasAndPost(c);
 		}
 	}
