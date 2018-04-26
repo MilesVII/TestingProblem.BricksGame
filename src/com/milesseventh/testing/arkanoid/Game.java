@@ -57,8 +57,8 @@ public class Game {
 			w = canvas.getWidth(); 
 			h = canvas.getHeight();
 			maxCollisionDistance = Vector.getVector(w, h).length();
-			BLOCK_W = w / BLOCKS_IN_ROW;
-			BLOCK_H = h * BLOCKS_FIELD_HR / BLOCKS_IN_COLUMN;
+			BLOCK_W = w / (float) BLOCKS_IN_ROW;
+			BLOCK_H = h * BLOCKS_FIELD_HR / (float) BLOCKS_IN_COLUMN;
 			
 			pain.setColor(Color.BLACK);
 			pain.setTextAlign(Align.LEFT);
@@ -116,11 +116,12 @@ public class Game {
 		if (!levelIsRunning)
 			onLevelStart();
 
-		if (justTouched)
+		if (justTouched){
 			if (isGameOver())
 				keepRunning = false;
 			else
 				isPaused = false;
+		}
 		justTouched = false;
 		
 		if (touch.x >= 0){
@@ -137,7 +138,6 @@ public class Game {
 					shift(balls.get(i), dt * SPEED);
 					if (balls.get(i).position.y > h)
 						toBeRemoved.add(balls.get(i));
-					canvas.drawCircle(balls.get(i).position.x, balls.get(i).position.y, 3, pain);
 				}
 			for (Ball b: toBeRemoved)
 				balls.remove(b);
@@ -155,18 +155,22 @@ public class Game {
 					balls.add(ball);
 				}
 			}
+		}
 	
+		if (!isTitleShowing){
+			//Balls rendering
+			for (int i = 0; i < balls.size(); ++i)
+				canvas.drawCircle(balls.get(i).position.x, balls.get(i).position.y, 3, pain);
 			//Paddle rendering
 			canvas.drawLine(paddleX - PADDLE_WR * w / 2, h * (1 - PADDLE_YR), 
 			                paddleX + PADDLE_WR * w / 2, h * (1 - PADDLE_YR), pain);
-		}
-		//Blocks rendering
-		if (!isTitleShowing)
+			//Blocks rendering
 			for (int i = 0; i < BLOCKS_IN_ROW; ++i)
 				for (int j = 0; j < BLOCKS_IN_COLUMN; ++j)
 					if (blocks[i + j * BLOCKS_IN_ROW] > 0)
 						canvas.drawRect(i * BLOCK_W, j * BLOCK_H, 
 						                (i + 1) * BLOCK_W, (j + 1) * BLOCK_H, pain);
+		}
 		
 		//Status bar
 		if (isPaused){

@@ -23,8 +23,9 @@ public class GameActivity extends Activity{
 			setOnTouchListener(new OnTouchListener(){
 				@Override
 				public boolean onTouch(View v, MotionEvent me){
-					if (ml != null){
-						ml.game.touch.x = me.getX();
+					if (ml != null && ml.game != null){
+						if (!ml.game.isPaused)
+							ml.game.touch.x = me.getX();
 						if (me.getAction() == MotionEvent.ACTION_DOWN)
 							ml.game.justTouched = true;
 					}
@@ -48,7 +49,11 @@ public class GameActivity extends Activity{
 
 		@Override
 		public void surfaceDestroyed(SurfaceHolder arg0){
-			ml.running = false;
+			if (ml != null){
+				ml.running = false;
+				/*if (ml.game != null)
+					ml.game.save();*/
+			}
 		}
 	}
 	

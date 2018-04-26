@@ -3,7 +3,6 @@ package com.milesseventh.testing.arkanoid;
 import android.content.SharedPreferences;
 import android.graphics.Canvas;
 import android.graphics.Color;
-import android.util.Log;
 import android.view.SurfaceHolder;
 
 public class MainLoop extends Thread {
