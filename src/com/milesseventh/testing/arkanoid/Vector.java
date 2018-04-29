@@ -6,6 +6,11 @@ public class Vector {
 	public float x = 0, y = 0;
 
 	public Vector(){}
+	
+	public Vector(Vector v){
+		x = v.x;
+		y = v.y;
+	}
 
 	public Vector(float xx, float yy){
 		x = xx; y = yy;

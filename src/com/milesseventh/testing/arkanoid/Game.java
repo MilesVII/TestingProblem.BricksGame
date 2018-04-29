@@ -9,6 +9,7 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Paint.Align;
+import android.util.Log;
 
 public class Game {	
 	class Ball {
@@ -29,11 +30,12 @@ public class Game {
 	                        BLOCKS_IN_COLUMN   = 10, 
 	                        LEVELS_MAX         = 17,
 	                        RESERVED_BALLS_MAX = 7,
+	                        BLOCK_HEALTH_MAX = 4,
 	                        NO_BLOCK = -1;
 	public float paddleX = -1;
 	public ArrayList<Ball> balls = new ArrayList<Ball>(), 
 	                       toBeRemoved = new ArrayList<Ball>();
-	public float[] blocks = new float[BLOCKS_IN_ROW * BLOCKS_IN_COLUMN];
+	public int[] blocks = new int[BLOCKS_IN_ROW * BLOCKS_IN_COLUMN];
 	public Paint pain      = new Paint(), 
 	             titlePain = new Paint();
 	public int w, h;
@@ -42,7 +44,7 @@ public class Game {
 	public boolean justTouched = false;
 	public Random r = new Random();
 	
-	public int level = 0, score = 0, reservedBalls = RESERVED_BALLS_MAX / 2;
+	public int level = 17, score = 0, reservedBalls = RESERVED_BALLS_MAX / 2;
 	public float PADDLE_WR, SPEED, BALL_SPAWN_PROB;
 	
 	///////////////////////////////////////////////////////////////////////////////////
@@ -153,6 +155,8 @@ public class Game {
 					ball.position = new Vector(w / 2, h / 2);
 					ball.direction = generateDirection();
 					balls.add(ball);
+					isPaused = true;
+					save();
 				}
 			}
 		}
@@ -167,9 +171,12 @@ public class Game {
 			//Blocks rendering
 			for (int i = 0; i < BLOCKS_IN_ROW; ++i)
 				for (int j = 0; j < BLOCKS_IN_COLUMN; ++j)
-					if (blocks[i + j * BLOCKS_IN_ROW] > 0)
+					if (blocks[i + j * BLOCKS_IN_ROW] > 0){
+						pain.setColor(getColorByBlockHealth(blocks[i + j * BLOCKS_IN_ROW]));
 						canvas.drawRect(i * BLOCK_W, j * BLOCK_H, 
 						                (i + 1) * BLOCK_W, (j + 1) * BLOCK_H, pain);
+					}
+			pain.setColor(Color.BLACK);
 		}
 		
 		//Status bar
@@ -185,6 +192,13 @@ public class Game {
 			                              PADDLE_WR, BALL_SPAWN_PROB*/), 5, h - 5, pain);
 		
 		return keepRunning;
+	}
+	
+	public int getColorByBlockHealth(int health){
+		float percent = (health - 1) / (float)(BLOCK_HEALTH_MAX - 1);
+		return Color.rgb(Math.round(lerp(percent, 0, 218)), 
+		                 Math.round(lerp(percent, 0, 64)), 
+		                 Math.round(lerp(percent, 0, 0)));
 	}
 	
 	///////////////////////////////////////////////////////////////////////////////////
@@ -210,11 +224,10 @@ public class Game {
 				ball.direction.x *= -1;
 			}
 			if (cr.block != NO_BLOCK){
-				blocks[cr.block] = 0;
-				if (r.nextFloat() < BALL_SPAWN_PROB){
+				if (--blocks[cr.block] == 0 && r.nextFloat() < BALL_SPAWN_PROB){
 					Ball b = new Ball();
 					b.direction = generateDirection();
-					b.position = getBlockPosition(cr.block, true);
+					b.position = new Vector(getBlockPosition(cr.block, true));
 					balls.add(b);
 				}
 				++score;
@@ -360,14 +373,26 @@ public class Game {
 			t.y *= -1;
 		return t;
 	}
-	
-	SimplexNoise sn = new SimplexNoise();
+
 	public void generateBlocks(){
 		int seed = r.nextInt();
+		float noise;
 		for (int i = 0; i < blocks.length; ++i){
 			Vector v = getBlockPosition(i, true);
-			blocks[i] = Math.round(sn.eval(v.x / w * 10, v.y / h * 10, seed) + .3f);
+			noise = getNoise(v, seed);
+			blocks[i] = (int)Math.round(noise);
+			if (blocks[i] > 0){
+				blocks[i] = Math.round(
+				            	lerp((getCurve(level / (float)LEVELS_MAX) + 1f) / 2f * (noise - .5f) * 2.3f, 
+				            	     1, BLOCK_HEALTH_MAX)
+				            );
+			}
 		}
+	}
+
+	SimplexNoise sn = new SimplexNoise();
+	public float getNoise(Vector v, float seed){
+		return remap((float)sn.eval(v.x / w * 10, v.y / h * 10, seed), -1f, 1f, 0f, 1f);
 	}
 	
 	public boolean isAnyBlocksLeft(){
@@ -378,7 +403,7 @@ public class Game {
 	}
 	
 	public Vector getBlockPosition(int id, boolean centered){
-		Vector v = new Vector();
+		Vector v = Vector.getVector();
 		v.x = id % BLOCKS_IN_ROW;
 		v.y = (id - v.x) / BLOCKS_IN_ROW;
 		if (centered){
@@ -393,8 +418,12 @@ public class Game {
 	public boolean isGameOver(){
 		return reservedBalls == 0 && balls.isEmpty();
 	}
-	
+
 	public float clamp(float x, float min, float max){
+		return Math.min(Math.max(min, x), max);
+	}
+	
+	public int clamp(int x, int min, int max){
 		return Math.min(Math.max(min, x), max);
 	}
 	
@@ -402,8 +431,11 @@ public class Game {
 		return a + (b - a) * percent;
 	}
 	
-	/////
-	//
+	public float remap(float in, float a, float b, float m, float n){
+		return m + (in - a) / (b - a) * (n - m);
+	}
+	/////////////////////////
+	//State handling
 	
 	SharedPreferences settings;
 	
@@ -412,7 +444,7 @@ public class Game {
 		e.clear();
 		e.putInt("LVL", level);
 		for (int i = 0; i < blocks.length; ++i)
-			e.putFloat("BLOCK " + i, blocks[i]);
+			e.putInt("BLOCK " + i, blocks[i]);
 		e.putInt("B_COUNT", balls.size());
 		e.putInt("R_COUNT", reservedBalls);
 		e.putInt("SCORE", score);
@@ -434,7 +466,7 @@ public class Game {
 		else
 			level = l;
 		for (int i = 0; i < blocks.length; ++i)
-			blocks[i] = settings.getFloat("BLOCK " + i, blocks[i]);
+			blocks[i] = settings.getInt("BLOCK " + i, blocks[i]);
 		int bcount = settings.getInt("B_COUNT", 0);
 		reservedBalls = settings.getInt("R_COUNT", 0);
 		score = settings.getInt("SCORE", 0);
