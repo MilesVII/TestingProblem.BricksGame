@@ -9,7 +9,7 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Paint.Align;
-import android.util.Log;
+import android.graphics.Paint.Style;
 
 public class Game {	
 	class Ball {
@@ -112,6 +112,7 @@ public class Game {
 		return (float)Math.sin(x * Math.PI - Math.PI / 2);
 	}
 
+	Ball temp = new Ball();
 	public boolean update(Canvas canvas, float dt){
 		if (!isGameStarted)
 			onGameStart(canvas);
@@ -134,13 +135,53 @@ public class Game {
 			touch.x = -1;
 		}
 
+		if (!isTitleShowing){
+			//Blocks rendering
+			for (int i = 0; i < BLOCKS_IN_ROW; ++i)
+				for (int j = 0; j < BLOCKS_IN_COLUMN; ++j)
+					if (blocks[i + j * BLOCKS_IN_ROW] > 0){
+						pain.setColor(getColorByBlockHealth(blocks[i + j * BLOCKS_IN_ROW]));
+						canvas.drawRect(i * BLOCK_W, j * BLOCK_H, 
+						                (i + 1) * BLOCK_W, (j + 1) * BLOCK_H, pain);
+					}
+			pain.setColor(Color.BLACK);
+		}
+		
 		//Balls processing
 		if (!isPaused){
-				for (int i = 0; i < balls.size(); ++i){
-					shift(balls.get(i), dt * SPEED);
-					if (balls.get(i).position.y > h)
-						toBeRemoved.add(balls.get(i));
+			for (int i = 0; i < balls.size(); ++i){
+				Ball dot = balls.get(i);
+				CastResult cr = shift(dot, dt * SPEED);
+				if (dot.position.y > h)
+					toBeRemoved.add(balls.get(i));
+				
+				//Render kickback ray
+				if (cr.isPaddle && blocksLeft() <= 7){
+					Vector from = Vector.add(dot.position, Vector.scale(dot.direction, cr.distance));
+					temp.position = from;
+					temp.direction = Vector.getVector();
+					temp.direction.x = temp.position.x - paddleX;
+					if (Math.abs(temp.direction.x) < 1)
+						temp.direction.x += 2;
+					temp.direction.y = -PADDLE_WR * w / 2.2f;
+					temp.direction.normalize();
+					CastResult kbr = findCollisionDistance(temp);
+					Vector to = Vector.add(from, Vector.scale(temp.direction, kbr.distance));
+					pain.setColor(Color.rgb(218, 64, 0));
+					canvas.drawLine(dot.position.x, dot.position.y, from.x, from.y, pain);
+					canvas.drawLine(from.x, from.y, to.x, to.y, pain);
+					canvas.drawCircle(from.x, from.y, 3, pain);
+					if (kbr.block != NO_BLOCK){
+						Vector bp = this.getBlockPosition(kbr.block, false);
+						pain.setColor(Color.GREEN);
+						pain.setStyle(Style.STROKE);
+						canvas.drawRect(bp.x, bp.y, 
+						               bp.x + BLOCK_W, bp.y + BLOCK_H, pain);
+						pain.setStyle(Style.FILL);
+					}
+					pain.setColor(Color.BLACK);
 				}
+			}
 			for (Ball b: toBeRemoved)
 				balls.remove(b);
 			toBeRemoved.clear();
@@ -168,15 +209,6 @@ public class Game {
 			//Paddle rendering
 			canvas.drawLine(paddleX - PADDLE_WR * w / 2, h * (1 - PADDLE_YR), 
 			                paddleX + PADDLE_WR * w / 2, h * (1 - PADDLE_YR), pain);
-			//Blocks rendering
-			for (int i = 0; i < BLOCKS_IN_ROW; ++i)
-				for (int j = 0; j < BLOCKS_IN_COLUMN; ++j)
-					if (blocks[i + j * BLOCKS_IN_ROW] > 0){
-						pain.setColor(getColorByBlockHealth(blocks[i + j * BLOCKS_IN_ROW]));
-						canvas.drawRect(i * BLOCK_W, j * BLOCK_H, 
-						                (i + 1) * BLOCK_W, (j + 1) * BLOCK_H, pain);
-					}
-			pain.setColor(Color.BLACK);
 		}
 		
 		//Status bar
@@ -204,7 +236,7 @@ public class Game {
 	///////////////////////////////////////////////////////////////////////////////////
 	//Continuous collision
 	
-	public void shift(Ball ball, float distance){
+	public CastResult shift(Ball ball, float distance){
 		CastResult cr = findCollisionDistance(ball);
 		if (cr.distance >= distance)
 			ball.position.add(ball.direction.scale(distance));
@@ -237,6 +269,7 @@ public class Game {
 			}
 			shift(ball, distance - cr.distance);
 		}
+		return cr;
 	}
 	
 	public CastResult findCollisionDistance(Ball ball){
@@ -400,6 +433,14 @@ public class Game {
 			if (b > 0)
 				return true;
 		return false;
+	}
+	
+	public int blocksLeft(){
+		int r = 0;
+		for (float b: blocks)
+			if (b > 0)
+				++r;
+		return r;
 	}
 	
 	public Vector getBlockPosition(int id, boolean centered){

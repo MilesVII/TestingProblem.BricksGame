@@ -69,6 +69,14 @@ public class Vector {
 		return v;
 	}
 
+	public static Vector add(Vector a, Vector b){
+		return getVector(a.x + b.x, a.y + b.y);
+	}
+	
+	public static Vector scale(Vector a, float b){
+		return getVector(a.x * b, a.y * b);
+	}
+	
 	static float dot(Vector a, Vector b){
 		return a.x * b.x + a.y * b.y;
 	}
@@ -78,7 +86,7 @@ public class Vector {
 	}
 
 	//Vector pool
-	private static final int VECTORS_IN_POOL = 512;
+	private static final int VECTORS_IN_POOL = 2048;
 	private static Vector[] vpool = new Vector[VECTORS_IN_POOL];
 	private static int vectorsCounter = 0, holder;
 	public static Vector getVector(){//new Vector2() alternative
