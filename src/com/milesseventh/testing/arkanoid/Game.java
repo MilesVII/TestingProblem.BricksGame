@@ -54,7 +54,8 @@ public class Game {
 	               levelIsRunning = false,
 	               isPaused       = true,
 	               isTitleShowing = true,
-	               keepRunning    = true;
+	               keepRunning    = true,
+	               isHighlightEnabled = false;
 	public void onGameStart(Canvas canvas){
 			w = canvas.getWidth(); 
 			h = canvas.getHeight();
@@ -156,7 +157,7 @@ public class Game {
 					toBeRemoved.add(balls.get(i));
 				
 				//Render kickback ray
-				if (cr.isPaddle && blocksLeft() <= 7){
+				if (cr.isPaddle && (isHighlightEnabled || blocksLeft() <= 17)){
 					Vector from = Vector.add(dot.position, Vector.scale(dot.direction, cr.distance));
 					temp.position = from;
 					temp.direction = Vector.getVector();
@@ -168,9 +169,9 @@ public class Game {
 					CastResult kbr = findCollisionDistance(temp);
 					Vector to = Vector.add(from, Vector.scale(temp.direction, kbr.distance));
 					pain.setColor(Color.rgb(218, 64, 0));
-					canvas.drawLine(dot.position.x, dot.position.y, from.x, from.y, pain);
-					canvas.drawLine(from.x, from.y, to.x, to.y, pain);
-					canvas.drawCircle(from.x, from.y, 3, pain);
+					canvas.drawLine(dot.position.x, dot.position.y, from.x, h * (1 - PADDLE_YR), pain);
+					canvas.drawLine(from.x, h * (1 - PADDLE_YR), to.x, to.y, pain);
+					canvas.drawCircle(from.x, h * (1 - PADDLE_YR), 3, pain);
 					if (kbr.block != NO_BLOCK){
 						Vector bp = this.getBlockPosition(kbr.block, false);
 						pain.setColor(Color.GREEN);

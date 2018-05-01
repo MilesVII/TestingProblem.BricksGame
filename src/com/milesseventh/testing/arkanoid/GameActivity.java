@@ -21,13 +21,17 @@ public class GameActivity extends Activity{
 			
 			//Input handling
 			setOnTouchListener(new OnTouchListener(){
+				@SuppressWarnings("deprecation")
 				@Override
 				public boolean onTouch(View v, MotionEvent me){
 					if (ml != null && ml.game != null){
 						if (!ml.game.isPaused)
 							ml.game.touch.x = me.getX();
-						if (me.getAction() == MotionEvent.ACTION_DOWN)
+						if (me.getAction() == MotionEvent.ACTION_DOWN){
 							ml.game.justTouched = true;
+						}
+						if (me.getAction() == MotionEvent.ACTION_POINTER_2_UP)
+							ml.game.isHighlightEnabled = !ml.game.isHighlightEnabled;
 					}
 					return true;
 				}
