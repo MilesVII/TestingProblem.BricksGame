@@ -38,6 +38,7 @@ public class MainLoop extends Thread {
 		time = System.nanoTime();
 		while (running){
 			dtleft += System.nanoTime() - time;
+			time = System.nanoTime();
 			while(dtleft >= FIXED_DT){
 				dtleft -= FIXED_DT;
 				Canvas c = sh.lockCanvas();
@@ -52,7 +53,6 @@ public class MainLoop extends Thread {
 				}
 				sh.unlockCanvasAndPost(c);
 			}
-			time = System.nanoTime();
 		}
 	}
 	 */

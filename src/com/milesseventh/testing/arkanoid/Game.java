@@ -157,31 +157,8 @@ public class Game {
 					toBeRemoved.add(balls.get(i));
 				
 				//Render kickback ray
-				if (cr.isPaddle && (isHighlightEnabled || blocksLeft() <= 17)){
-					Vector from = Vector.add(dot.position, Vector.scale(dot.direction, cr.distance));
-					temp.position = from;
-					temp.direction = Vector.getVector();
-					temp.direction.x = temp.position.x - paddleX;
-					if (Math.abs(temp.direction.x) < 1)
-						temp.direction.x += 2;
-					temp.direction.y = -PADDLE_WR * w / 2.2f;
-					temp.direction.normalize();
-					CastResult kbr = findCollisionDistance(temp);
-					Vector to = Vector.add(from, Vector.scale(temp.direction, kbr.distance));
-					pain.setColor(Color.rgb(218, 64, 0));
-					canvas.drawLine(dot.position.x, dot.position.y, from.x, h * (1 - PADDLE_YR), pain);
-					canvas.drawLine(from.x, h * (1 - PADDLE_YR), to.x, to.y, pain);
-					canvas.drawCircle(from.x, h * (1 - PADDLE_YR), 3, pain);
-					if (kbr.block != NO_BLOCK){
-						Vector bp = this.getBlockPosition(kbr.block, false);
-						pain.setColor(Color.GREEN);
-						pain.setStyle(Style.STROKE);
-						canvas.drawRect(bp.x, bp.y, 
-						               bp.x + BLOCK_W, bp.y + BLOCK_H, pain);
-						pain.setStyle(Style.FILL);
-					}
-					pain.setColor(Color.BLACK);
-				}
+				if (cr.isPaddle && (isHighlightEnabled || blocksLeft() <= 17))
+					renderKickoff(dot, canvas, cr);
 			}
 			for (Ball b: toBeRemoved)
 				balls.remove(b);
@@ -227,15 +204,30 @@ public class Game {
 		return keepRunning;
 	}
 	
-	public int getColorByBlockHealth(int health){
-		float percent = (health - 1) / (float)(BLOCK_HEALTH_MAX - 1);
-		return Color.rgb(Math.round(lerp(percent, 0, 218)), 
-		                 Math.round(lerp(percent, 0, 64)), 
-		                 Math.round(lerp(percent, 0, 0)));
+	public void renderKickoff(Ball ball, Canvas canvas, CastResult cr){
+		Vector from = Vector.add(ball.position, Vector.scale(ball.direction, cr.distance));
+		
+		temp.position = from;
+		temp.direction = Vector.getVector();
+		kickoff(temp);
+		CastResult kbr = findCollisionDistance(temp);
+		
+		Vector to = Vector.add(from, Vector.scale(temp.direction, kbr.distance));
+		
+		pain.setColor(Color.rgb(218, 64, 0));
+		canvas.drawLine(ball.position.x, ball.position.y, from.x, h * (1 - PADDLE_YR), pain);
+		canvas.drawLine(from.x, h * (1 - PADDLE_YR), to.x, to.y, pain);
+		canvas.drawCircle(from.x, h * (1 - PADDLE_YR), 3, pain);
+		if (kbr.block != NO_BLOCK){
+			Vector bp = this.getBlockPosition(kbr.block, false);
+			pain.setColor(Color.GREEN);
+			pain.setStyle(Style.STROKE);
+			canvas.drawRect(bp.x, bp.y, 
+			               bp.x + BLOCK_W, bp.y + BLOCK_H, pain);
+			pain.setStyle(Style.FILL);
+		}
+		pain.setColor(Color.BLACK);
 	}
-	
-	///////////////////////////////////////////////////////////////////////////////////
-	//Continuous collision
 	
 	public CastResult shift(Ball ball, float distance){
 		CastResult cr = findCollisionDistance(ball);
@@ -246,11 +238,7 @@ public class Game {
 			//ON COLLISION
 			if (cr.isHorizontal){
 				if (cr.isPaddle){
-					ball.direction.x = ball.position.x - paddleX;
-					if (Math.abs(ball.direction.x) < 1)
-						ball.direction.x += 2;
-					ball.direction.y = -PADDLE_WR * w / 2.2f;
-					ball.direction.normalize();
+					kickoff(ball);
 				} else
 					ball.direction.y *= -1;
 			} else {
@@ -272,6 +260,18 @@ public class Game {
 		}
 		return cr;
 	}
+	
+	public Vector kickoff(Ball ball){
+		ball.direction.x = ball.position.x - paddleX;
+		if (Math.abs(ball.direction.x) < 1)
+			ball.direction.x += 2;
+		ball.direction.y = -PADDLE_WR * w / 2.2f;
+		ball.direction.normalize();
+		return ball.direction;
+	}
+	
+	///////////////////////////////////////////////////////////////////////////////////
+	//Continuous collision
 	
 	public CastResult findCollisionDistance(Ball ball){
 		CastResult borderCast = EDToBorders(ball);
@@ -457,6 +457,13 @@ public class Game {
 		return v;
 	}
 	
+	public int getColorByBlockHealth(int health){
+		float percent = (health - 1) / (float)(BLOCK_HEALTH_MAX - 1);
+		return Color.rgb(Math.round(lerp(percent, 0, 218)), 
+		                 Math.round(lerp(percent, 0, 64)), 
+		                 Math.round(lerp(percent, 0, 0)));
+	}
+	
 	public boolean isGameOver(){
 		return reservedBalls == 0 && balls.isEmpty();
 	}
@@ -490,6 +497,7 @@ public class Game {
 		e.putInt("B_COUNT", balls.size());
 		e.putInt("R_COUNT", reservedBalls);
 		e.putInt("SCORE", score);
+		e.putBoolean("HIGHLIGHT", isHighlightEnabled);
 		for (int i = 0; i < balls.size(); ++i){
 			e.putFloat("B " + i + "XP", balls.get(i).position.x);
 			e.putFloat("B " + i + "YP", balls.get(i).position.y);
@@ -512,6 +520,7 @@ public class Game {
 		int bcount = settings.getInt("B_COUNT", 0);
 		reservedBalls = settings.getInt("R_COUNT", 0);
 		score = settings.getInt("SCORE", 0);
+		isHighlightEnabled = settings.getBoolean("HIGHLIGHT", false);
 		for (int i = 0; i < bcount; ++i){
 			Ball b = new Ball();
 			b.position  = new Vector(settings.getFloat("B " + i + "XP", 0), settings.getFloat("B " + i + "YP", 0));
