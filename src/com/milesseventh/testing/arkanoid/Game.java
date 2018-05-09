@@ -55,7 +55,8 @@ public class Game {
 	               isPaused       = true,
 	               isTitleShowing = true,
 	               keepRunning    = true,
-	               isHighlightEnabled = false;
+	               isHighlightEnabled = false,
+	               isAutoplayEnabled = false;
 	public void onGameStart(Canvas canvas){
 			w = canvas.getWidth(); 
 			h = canvas.getHeight();
@@ -113,7 +114,6 @@ public class Game {
 		return (float)Math.sin(x * Math.PI - Math.PI / 2);
 	}
 
-	Ball temp = new Ball();
 	public boolean update(Canvas canvas, float dt){
 		if (!isGameStarted)
 			onGameStart(canvas);
@@ -127,15 +127,21 @@ public class Game {
 				isPaused = false;
 		}
 		justTouched = false;
-		
+
+		float minPaddlePosition = PADDLE_WR / 2f * w;
+		float maxPaddlePosition = w - PADDLE_WR / 2f * w;
 		if (touch.x >= 0){
 			isTitleShowing = false;
-			float minPaddlePosition = PADDLE_WR / 2f * w;
-			float maxPaddlePosition = w - PADDLE_WR / 2f * w;
 			paddleX = clamp(touch.x, minPaddlePosition, maxPaddlePosition);
 			touch.x = -1;
 		}
-
+		if (isAutoplayEnabled && !isPaused){
+			//Override paddle position
+			float opp = findOptimalPaddlePosition();
+			if (!Float.isNaN(opp))
+				paddleX = clamp(opp, minPaddlePosition, maxPaddlePosition);
+		}
+		
 		if (!isTitleShowing){
 			//Blocks rendering
 			for (int i = 0; i < BLOCKS_IN_ROW; ++i)
@@ -203,7 +209,32 @@ public class Game {
 		
 		return keepRunning;
 	}
-	
+
+	Ball temp = new Ball();
+	static final float AP_SIDEKICK = .7f; //0 for kickoff from center of the paddle, 1 for it's tip
+	static final long AP_PERIOD_MS = 200;
+	public float findOptimalPaddlePosition(){
+		float minDist = Float.POSITIVE_INFINITY;
+		float hit = Float.NaN;
+		for (Ball dot: balls)
+			if (dot.direction.y > 0){
+				CastResult cr = findCollisionDistance(dot, w / 2f, w);
+				if (cr.isPaddle && cr.distance < minDist){
+					minDist = cr.distance;
+					hit = Vector.getVector(dot.direction).scale(cr.distance).add(dot.position).x;
+				}
+			}
+		if (hit == Float.NaN)
+			return Float.NaN;
+		else {
+			float time = System.currentTimeMillis() % (AP_PERIOD_MS * 4);
+			if (time < AP_PERIOD_MS * 2)
+				return hit + ((PADDLE_WR * (float)w) / 2f) * ((time - AP_PERIOD_MS) / (float)AP_PERIOD_MS * AP_SIDEKICK);
+			else
+				return hit + ((PADDLE_WR * (float)w) / 2f) * ((time - AP_PERIOD_MS * 3) / (float)AP_PERIOD_MS * AP_SIDEKICK) * -1;
+		}
+	}
+
 	public void renderKickoff(Ball ball, Canvas canvas, CastResult cr){
 		Vector from = Vector.add(ball.position, Vector.scale(ball.direction, cr.distance));
 		
@@ -272,9 +303,17 @@ public class Game {
 	
 	///////////////////////////////////////////////////////////////////////////////////
 	//Continuous collision
-	
+
 	public CastResult findCollisionDistance(Ball ball){
-		CastResult borderCast = EDToBorders(ball);
+		CastResult borderCast = EDToBorders(ball, paddleX, PADDLE_WR * w);
+		CastResult brickCast = EDToBricks(ball);
+		if (borderCast.distance < brickCast.distance){
+			return borderCast;
+		}
+		return brickCast;
+	}
+	public CastResult findCollisionDistance(Ball ball, float paddleX, float paddleW){
+		CastResult borderCast = EDToBorders(ball, paddleX, paddleW);
 		CastResult brickCast = EDToBricks(ball);
 		if (borderCast.distance < brickCast.distance){
 			return borderCast;
@@ -282,7 +321,7 @@ public class Game {
 		return brickCast;
 	}
 	
-	public CastResult EDToBorders(Ball ball){
+	public CastResult EDToBorders(Ball ball, float paddleX, float paddleW){
 		CastResult r = new CastResult();
 		float min = maxCollisionDistance, xray;
 		boolean isH = true;
@@ -309,7 +348,7 @@ public class Game {
 			}
 		} else {
 			xray = EDtoHorizontalWall(ball, h * (1 - PADDLE_YR)); //Bottom
-			if (xray < min && Math.abs(offsetByED(ball, xray).x - paddleX) < PADDLE_WR * w / 2){
+			if (xray < min && Math.abs(offsetByED(ball, xray).x - paddleX) < paddleW / 2){
 				isH = true;
 				r.isPaddle = true;
 				min = xray;

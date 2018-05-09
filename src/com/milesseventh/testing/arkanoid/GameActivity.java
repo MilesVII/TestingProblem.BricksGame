@@ -30,8 +30,10 @@ public class GameActivity extends Activity{
 						if (me.getAction() == MotionEvent.ACTION_DOWN){
 							ml.game.justTouched = true;
 						}
-						if (me.getAction() == MotionEvent.ACTION_POINTER_2_UP)
+						if (me.getAction() == MotionEvent.ACTION_POINTER_2_UP)//TODO: fix deprecated methods
 							ml.game.isHighlightEnabled = !ml.game.isHighlightEnabled;
+						if (me.getAction() == MotionEvent.ACTION_POINTER_3_UP)
+							ml.game.isAutoplayEnabled = !ml.game.isAutoplayEnabled;
 					}
 					return true;
 				}
