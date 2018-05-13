@@ -5,11 +5,6 @@ import java.util.Random;
 
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.Editor;
-import android.graphics.Canvas;
-import android.graphics.Color;
-import android.graphics.Paint;
-import android.graphics.Paint.Align;
-import android.graphics.Paint.Style;
 
 public class Game {	
 	class Ball {
@@ -22,6 +17,7 @@ public class Game {
 		int block = NO_BLOCK;
 	}
 	
+	public static final boolean ANDROID_STATE_HANDLING_OVERRIDE = true;
 	public static final float PADDLE_YR        = .1f, 
 	                          PADDLE_WR_MAX    = .24f, 
 	                          BLOCKS_FIELD_HR  = .45f,
@@ -31,20 +27,19 @@ public class Game {
 	                        LEVELS_MAX         = 17,
 	                        RESERVED_BALLS_MAX = 7,
 	                        BLOCK_HEALTH_MAX = 4,
-	                        NO_BLOCK = -1;
+	                        NO_BLOCK = -1,
+	                        COLOR_BLACK = 0xFF << 24;
 	public float paddleX = -1;
 	public ArrayList<Ball> balls = new ArrayList<Ball>(), 
 	                       toBeRemoved = new ArrayList<Ball>();
 	public int[] blocks = new int[BLOCKS_IN_ROW * BLOCKS_IN_COLUMN];
-	public Paint pain      = new Paint(), 
-	             titlePain = new Paint();
 	public int w, h;
-	public float maxCollisionDistance, BLOCK_W, BLOCK_H;
-	public Vector touch = new Vector(-1, 0);
+	public float maxCollisionDistance;
+	public Vector touch = new Vector(-1, 0), BLOCK_SIZE = new Vector();
 	public boolean justTouched = false;
 	public Random r = new Random();
-	
-	public int level = 0, score = 0, reservedBalls = RESERVED_BALLS_MAX / 2;
+	public DrawingAdapter gfx;
+	public int level = 18, score = 0, reservedBalls = RESERVED_BALLS_MAX / 2, accentColor = packColor(218, 64, 0);
 	public float PADDLE_WR, SPEED, BALL_SPAWN_PROB;
 	
 	///////////////////////////////////////////////////////////////////////////////////
@@ -57,20 +52,12 @@ public class Game {
 	               keepRunning    = true,
 	               isHighlightEnabled = false,
 	               isAutoplayEnabled = false;
-	public void onGameStart(Canvas canvas){
-			w = canvas.getWidth(); 
-			h = canvas.getHeight();
+	public void onGameStart(int width, int height){
+			w = width; 
+			h = height;
 			maxCollisionDistance = Vector.getVector(w, h).length();
-			BLOCK_W = w / (float) BLOCKS_IN_ROW;
-			BLOCK_H = h * BLOCKS_FIELD_HR / (float) BLOCKS_IN_COLUMN;
-			
-			pain.setColor(Color.BLACK);
-			pain.setTextAlign(Align.LEFT);
-			pain.setTextSize(16);
-			
-			titlePain.setColor(Color.rgb(218, 64, 0));
-			titlePain.setTextAlign(Align.CENTER);
-			titlePain.setTextSize(21);
+			BLOCK_SIZE.x = w / (float) BLOCKS_IN_ROW;
+			BLOCK_SIZE.y = h * BLOCKS_FIELD_HR / (float) BLOCKS_IN_COLUMN;
 			
 			paddleX = w / 2;
 			isGameStarted = true;
@@ -114,9 +101,9 @@ public class Game {
 		return (float)Math.sin(x * Math.PI - Math.PI / 2);
 	}
 
-	public boolean update(Canvas canvas, float dt){
+	public boolean update(float dt, int w, int h){
 		if (!isGameStarted)
-			onGameStart(canvas);
+			onGameStart(w, h);
 		if (!levelIsRunning)
 			onLevelStart();
 
@@ -147,11 +134,10 @@ public class Game {
 			for (int i = 0; i < BLOCKS_IN_ROW; ++i)
 				for (int j = 0; j < BLOCKS_IN_COLUMN; ++j)
 					if (blocks[i + j * BLOCKS_IN_ROW] > 0){
-						pain.setColor(getColorByBlockHealth(blocks[i + j * BLOCKS_IN_ROW]));
-						canvas.drawRect(i * BLOCK_W, j * BLOCK_H, 
-						                (i + 1) * BLOCK_W, (j + 1) * BLOCK_H, pain);
+						gfx.rect(Vector.getVector(BLOCK_SIZE).multiply(i, j), 
+						         Vector.getVector(BLOCK_SIZE).multiply(i + 1, j + 1), 
+						         getColorByBlockHealth(blocks[i + j * BLOCKS_IN_ROW]), true);
 					}
-			pain.setColor(Color.BLACK);
 		}
 		
 		//Balls processing
@@ -164,7 +150,7 @@ public class Game {
 				
 				//Render kickback ray
 				if (cr.isPaddle && (isHighlightEnabled || blocksLeft() <= 17))
-					renderKickoff(dot, canvas, cr);
+					renderKickoff(dot, cr);
 			}
 			for (Ball b: toBeRemoved)
 				balls.remove(b);
@@ -189,28 +175,26 @@ public class Game {
 		if (!isTitleShowing){
 			//Balls rendering
 			for (int i = 0; i < balls.size(); ++i)
-				canvas.drawCircle(balls.get(i).position.x, balls.get(i).position.y, 3, pain);
+				gfx.circle(balls.get(i).position, 3, COLOR_BLACK, true);
 			//Paddle rendering
-			canvas.drawLine(paddleX - PADDLE_WR * w / 2, h * (1 - PADDLE_YR), 
-			                paddleX + PADDLE_WR * w / 2, h * (1 - PADDLE_YR), pain);
+			gfx.line(Vector.getVector(paddleX - PADDLE_WR * w / 2, h * (1 - PADDLE_YR)), 
+			         Vector.getVector(paddleX + PADDLE_WR * w / 2, h * (1 - PADDLE_YR)), 
+			         COLOR_BLACK);
 		}
 		
 		//Status bar
 		if (isPaused){
-			canvas.drawText(isTitleShowing ? "Seventh Block Kuzushi by Miles Seventh" :
-			                   (isGameOver() ? ("Game is over. Your score: " + score) : "PAUSED"), 
-			                w / 2, h / 2, titlePain);
-			canvas.drawText("Tap to play", 5, h - 5, pain);
+			gfx.text(isTitleShowing ? "Seventh Block Kuzushi by Miles Seventh" :
+			            (isGameOver() ? ("Game is over. Your score: " + score) : "PAUSED"), 
+			         Vector.getVector(w / 2, h / 2), accentColor, true, 21);
+			gfx.text("Tap to play", Vector.getVector(5, h - 5), COLOR_BLACK, false, 16);
 		} else
-			canvas.drawText(String.format("Level %3d | Balls available %1d | Score %4d | ",
-			//                            + "Balls on level %3d | Speed %.2f | PaddleWR %.2f | Prob %.1f",
-			                              level, reservedBalls, score/*, balls.size(), SPEED, 
-			                              PADDLE_WR, BALL_SPAWN_PROB*/), 5, h - 5, pain);
+			gfx.text(String.format("Level %3d | Balls available %1d | Score %4d | ", level, reservedBalls, score), 
+			         Vector.getVector(5, h - 5), COLOR_BLACK, false, 16);
 		
 		return keepRunning;
 	}
 
-	Ball temp = new Ball();
 	static final float AP_SIDEKICK = .7f; //0 for kickoff from center of the paddle, 1 for it's tip
 	static final long AP_PERIOD_MS = 200;
 	public float findOptimalPaddlePosition(){
@@ -221,10 +205,10 @@ public class Game {
 				CastResult cr = findCollisionDistance(dot, w / 2f, w);
 				if (cr.isPaddle && cr.distance < minDist){
 					minDist = cr.distance;
-					hit = Vector.getVector(dot.direction).scale(cr.distance).add(dot.position).x;
+					hit = dot.direction.scaled(cr.distance).add(dot.position).x;
 				}
 			}
-		if (hit == Float.NaN)
+		if (Float.isNaN(hit))
 			return Float.NaN;
 		else {
 			float time = System.currentTimeMillis() % (AP_PERIOD_MS * 4);
@@ -235,37 +219,35 @@ public class Game {
 		}
 	}
 
-	public void renderKickoff(Ball ball, Canvas canvas, CastResult cr){
-		Vector from = Vector.add(ball.position, Vector.scale(ball.direction, cr.distance));
-		
+	private Ball temp = new Ball();
+	private Vector paddleCollisionPoint = new Vector();
+	public void renderKickoff(Ball ball, CastResult cr){
+		Vector from = paddleCollisionPoint;
+		from.set(Vector.add(ball.position, ball.direction.scaled(cr.distance)));
 		temp.position = from;
-		temp.direction = Vector.getVector();
+		temp.direction = Vector.getVector(ball.direction);
 		kickoff(temp);
-		CastResult kbr = findCollisionDistance(temp);
+		CastResult kbr = cast(temp);
 		
 		Vector to = Vector.add(from, Vector.scale(temp.direction, kbr.distance));
+
+		gfx.line(ball.position, Vector.getVector(from.x, h * (1 - PADDLE_YR)), accentColor);
+		gfx.line(           to, Vector.getVector(from.x, h * (1 - PADDLE_YR)), accentColor);
+		gfx.circle(Vector.getVector(from.x, h * (1 - PADDLE_YR)), 
+		           3, accentColor, true);
 		
-		pain.setColor(Color.rgb(218, 64, 0));
-		canvas.drawLine(ball.position.x, ball.position.y, from.x, h * (1 - PADDLE_YR), pain);
-		canvas.drawLine(from.x, h * (1 - PADDLE_YR), to.x, to.y, pain);
-		canvas.drawCircle(from.x, h * (1 - PADDLE_YR), 3, pain);
 		if (kbr.block != NO_BLOCK){
 			Vector bp = this.getBlockPosition(kbr.block, false);
-			pain.setColor(Color.GREEN);
-			pain.setStyle(Style.STROKE);
-			canvas.drawRect(bp.x, bp.y, 
-			               bp.x + BLOCK_W, bp.y + BLOCK_H, pain);
-			pain.setStyle(Style.FILL);
+			gfx.rect(bp, Vector.getVector(bp).add(BLOCK_SIZE), packColor(0, 255, 0), false);
 		}
-		pain.setColor(Color.BLACK);
 	}
 	
 	public CastResult shift(Ball ball, float distance){
-		CastResult cr = findCollisionDistance(ball);
+		CastResult cr = cast(ball);
 		if (cr.distance >= distance)
-			ball.position.add(ball.direction.scale(distance));
+			ball.position.add(ball.direction.scaled(distance));
 		else {
-			ball.position.add(ball.direction.scale(cr.distance));
+			ball.position.add(ball.direction.scaled(cr.distance));
 			//ON COLLISION
 			if (cr.isHorizontal){
 				if (cr.isPaddle){
@@ -304,7 +286,7 @@ public class Game {
 	///////////////////////////////////////////////////////////////////////////////////
 	//Continuous collision
 
-	public CastResult findCollisionDistance(Ball ball){
+	public CastResult cast(Ball ball){
 		CastResult borderCast = EDToBorders(ball, paddleX, PADDLE_WR * w);
 		CastResult brickCast = EDToBricks(ball);
 		if (borderCast.distance < brickCast.distance){
@@ -377,30 +359,30 @@ public class Game {
 	public CastResult EDToBrick(Ball ball, int i, int j){
 		float min = maxCollisionDistance, xray, off;
 		boolean isH = true;
-		xray = EDtoVerticalWall(ball, i * BLOCK_W); //Left
+		xray = EDtoVerticalWall(ball, i * BLOCK_SIZE.x); //Left
 		off = offsetByED(ball, xray).y;
-		if (xray < min && off > j * BLOCK_H && off < (j + 1) * BLOCK_H){
+		if (xray < min && off > j * BLOCK_SIZE.y && off < (j + 1) * BLOCK_SIZE.y){
 			isH = false;
 			min = xray;
 		}
 		
-		xray = EDtoVerticalWall(ball, (i + 1) * BLOCK_W);  //Right
+		xray = EDtoVerticalWall(ball, (i + 1) * BLOCK_SIZE.x);  //Right
 		off = offsetByED(ball, xray).y;
-		if (xray < min && off > j * BLOCK_H && off < (j + 1) * BLOCK_H){
+		if (xray < min && off > j * BLOCK_SIZE.y && off < (j + 1) * BLOCK_SIZE.y){
 			isH = false;
 			min = xray;
 		}
 		
-		xray = EDtoHorizontalWall(ball, j * BLOCK_H);      //Top
+		xray = EDtoHorizontalWall(ball, j * BLOCK_SIZE.y);      //Top
 		off = offsetByED(ball, xray).x;
-		if (xray < min && off > i * BLOCK_W && off < (i + 1) * BLOCK_W){
+		if (xray < min && off > i * BLOCK_SIZE.x && off < (i + 1) * BLOCK_SIZE.x){
 			isH = true;
 			min = xray;
 		}
 		
-		xray = EDtoHorizontalWall(ball, (j + 1) * BLOCK_H);//Bottom
+		xray = EDtoHorizontalWall(ball, (j + 1) * BLOCK_SIZE.y);//Bottom
 		off = offsetByED(ball, xray).x;
-		if (xray < min && off > i * BLOCK_W && off < (i + 1) * BLOCK_W){
+		if (xray < min && off > i * BLOCK_SIZE.x && off < (i + 1) * BLOCK_SIZE.x){
 			isH = true;
 			min = xray;
 		}
@@ -427,7 +409,7 @@ public class Game {
 	}
 	
 	public Vector offsetByED(Ball ball, float ed){
-		return Vector.getVector(ball.position).add(ball.direction.scale(ed));
+		return Vector.getVector(ball.position).add(ball.direction.scaled(ed));
 	}
 	
 	///////////////////////////////////////////////////////////////////////////////////
@@ -465,7 +447,7 @@ public class Game {
 
 	SimplexNoise sn = new SimplexNoise();
 	public float getNoise(Vector v, float seed){
-		return remap((float)sn.eval(v.x / w * 10, v.y / h * 10, seed), -1f, 1f, 0f, 1f);
+		return remap((float)sn.eval(v.x / w * 6, v.y / h * 6, seed), -1f, 1f, 0f, 1f);
 	}
 	
 	public boolean isAnyBlocksLeft(){
@@ -491,16 +473,32 @@ public class Game {
 			v.x += .5f;
 			v.y += .5f;
 		}
-		v.x *= BLOCK_W;
-		v.y *= BLOCK_H;
+		v.multiply(BLOCK_SIZE);
 		return v;
 	}
 	
 	public int getColorByBlockHealth(int health){
 		float percent = (health - 1) / (float)(BLOCK_HEALTH_MAX - 1);
-		return Color.rgb(Math.round(lerp(percent, 0, 218)), 
-		                 Math.round(lerp(percent, 0, 64)), 
-		                 Math.round(lerp(percent, 0, 0)));
+		return packColor(Math.round(lerp(percent, 0, unpackR(accentColor))), 
+		                 Math.round(lerp(percent, 0, unpackG(accentColor))), 
+		                 Math.round(lerp(percent, 0, unpackB(accentColor))));
+	}
+	
+	public static int packColor(int r, int g, int b){
+		r = r & 0xFF;
+		g = g & 0xFF;
+		b = b & 0xFF;
+		return (0xFF << 24) | (r << 16) | (g << 8) | b; 
+	}
+	
+	public static int unpackR(int c){
+		return (c >> 16) & 0xFF;
+	}
+	public static int unpackG(int c){
+		return (c >> 8) & 0xFF;
+	}
+	public static int unpackB(int c){
+		return c & 0xFF;
 	}
 	
 	public boolean isGameOver(){
@@ -528,6 +526,8 @@ public class Game {
 	SharedPreferences settings;
 	
 	public void save(){
+		if (!ANDROID_STATE_HANDLING_OVERRIDE)
+			return;
 		Editor e = settings.edit();
 		e.clear();
 		e.putInt("LVL", level);
@@ -548,6 +548,8 @@ public class Game {
 	}
 	
 	public boolean load(){
+		if (!ANDROID_STATE_HANDLING_OVERRIDE)
+			return false;
 		int l = settings.getInt("LVL", -1);
 		
 		if (l == -1)
@@ -572,6 +574,8 @@ public class Game {
 	}
 	
 	public void resetSave(){
+		if (!ANDROID_STATE_HANDLING_OVERRIDE)
+			return;
 		Editor e = settings.edit();
 		e.clear();
 		e.commit();

@@ -21,7 +21,6 @@ public class GameActivity extends Activity{
 			
 			//Input handling
 			setOnTouchListener(new OnTouchListener(){
-				@SuppressWarnings("deprecation")
 				@Override
 				public boolean onTouch(View v, MotionEvent me){
 					if (ml != null && ml.game != null){

@@ -15,9 +15,81 @@ public class Vector {
 	public Vector(float xx, float yy){
 		x = xx; y = yy;
 	}
-	
-	public void mimic(Vector v){
+
+	public void set(Vector v){
 		x = v.x; y = v.y;
+	}
+
+	public Vector normalize(){
+		set(scaled(1 / length()));
+		return this;
+	}
+
+	public Vector add(Vector v){
+		x += v.x; y += v.y;
+		return this;
+	}
+	
+	public Vector add(float nx, float ny){
+		x += nx; y += ny;
+		return this;
+	}
+
+	public Vector sub(Vector v){
+		x -= v.x; y -= v.y;
+		return this;
+	}
+	
+	public Vector multiply(Vector nv){
+		x *= nv.x; y *= nv.y;
+		return this;
+	}
+	
+	public Vector multiply(float nx, float ny){
+		x *= nx; y *= ny;
+		return this;
+	}
+
+	//Processed vectors are loaded from pool and should not be used as global values
+	//Should be used carefully
+	public Vector scaled(float s){
+		Vector v = getVector(this);
+		v.x *= s; v.y *= s;
+		return v;
+	}
+
+	public Vector normalized(){
+		return scaled(1 / length());
+	}
+	
+	public Vector multiplied(Vector nv){
+		Vector v = getVector(this);
+		v.x *= nv.x; v.y *= nv.y;
+		return v;
+	}
+	
+	public Vector multiplied(float nx, float ny){
+		Vector v = getVector(this);
+		v.x *= nx; v.y *= ny;
+		return v;
+	}
+
+	public static Vector add(Vector a, Vector b){
+		return getVector(a.x + b.x, a.y + b.y);
+	}
+	
+	public static Vector scale(Vector a, float b){
+		return getVector(a.x * b, a.y * b);
+	}
+	
+	//Utils
+	
+	static float dot(Vector a, Vector b){
+		return a.x * b.x + a.y * b.y;
+	}
+
+	static float project(Vector v0, Vector v1){
+		return dot(v0, v1) / dot(v1, v1);
 	}
 
 	public float distance(Vector v){
@@ -37,56 +109,8 @@ public class Vector {
 		return (float)Math.sqrt(x * x + y * y);
 	}
 
-	public Vector normalized(){
-		return scale(1 / length());
-	}
-
-	public void normalize(){
-		mimic(scale(1 / length()));
-	}
-
-	public Vector add(Vector v){
-		x += v.x; y += v.y;
-		return this;
-	}
-
-	public Vector sub(Vector v){
-		x -= v.x; y -= v.y;
-		return this;
-	}
-
-	//Processed vectors are loaded from pool and should not be used as global values
-	//Should be used carefully
-	public Vector scale(float s){
-		Vector v = getVector(this);
-		v.x *= s; v.y *= s;
-		return v;
-	}
-
-	public Vector multiply(Vector nv){
-		Vector v = getVector(this);
-		v.x *= nv.x; v.y *= nv.y;
-		return v;
-	}
-
-	public static Vector add(Vector a, Vector b){
-		return getVector(a.x + b.x, a.y + b.y);
-	}
-	
-	public static Vector scale(Vector a, float b){
-		return getVector(a.x * b, a.y * b);
-	}
-	
-	static float dot(Vector a, Vector b){
-		return a.x * b.x + a.y * b.y;
-	}
-
-	static float project(Vector v0, Vector v1){
-		return dot(v0, v1) / dot(v1, v1);
-	}
-
 	//Vector pool
-	private static final int VECTORS_IN_POOL = 2048;
+	private static final int VECTORS_IN_POOL = 4096;
 	private static Vector[] vpool = new Vector[VECTORS_IN_POOL];
 	private static int vectorsCounter = 0, holder;
 	public static Vector getVector(){//new Vector2() alternative

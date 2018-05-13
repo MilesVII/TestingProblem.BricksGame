@@ -3,9 +3,46 @@ package com.milesseventh.testing.arkanoid;
 import android.content.SharedPreferences;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.Paint;
+import android.graphics.Paint.Align;
+import android.graphics.Paint.Style;
 import android.view.SurfaceHolder;
 
 public class MainLoop extends Thread {
+	public static class AndroidDrawingImplementation implements DrawingAdapter{
+		public Canvas canvas;
+		public Paint paint = new Paint();
+		
+		@Override
+		public void line(Vector from, Vector to, int color){
+			paint.setColor(color);
+			canvas.drawLine(from.x, from.y, to.x, to.y, paint);
+		}
+
+		@Override
+		public void rect(Vector from, Vector to, int color, boolean fill){
+			paint.setColor(color);
+			paint.setStyle(fill ? Style.FILL : Style.STROKE);
+			canvas.drawRect(from.x, from.y, to.x, to.y, paint);
+		}
+
+		@Override
+		public void circle(Vector position, float radius, int color, boolean fill){
+			paint.setColor(color);
+			paint.setStyle(fill ? Style.FILL : Style.STROKE);
+			canvas.drawCircle(position.x, position.y, radius, paint);
+		}
+
+		@Override
+		public void text(String text, Vector position, int color, boolean alignToCenter, int size){
+			paint.setColor(color);
+			paint.setTextAlign(alignToCenter ? Align.CENTER : Align.LEFT);
+			paint.setTextSize(size);
+			canvas.drawText(text, position.x, position.y, paint);
+		}
+	}
+	public static AndroidDrawingImplementation androidgfx = new AndroidDrawingImplementation();
+	
 	public SurfaceHolder sh;
 	public SharedPreferences sp;
 	public boolean running = true;
@@ -15,45 +52,24 @@ public class MainLoop extends Thread {
 	@Override
 	public void run(){
 		game.settings = sp;
+		game.gfx = androidgfx;
 		time = System.nanoTime();
 		while (running){
 			Canvas c = sh.lockCanvas();
+			androidgfx.canvas = c;
 			if (c == null){
 				running = false;
 				break;
 			}
 			c.drawColor(Color.WHITE);
-			if (!game.update(c, (float)(System.nanoTime() - time) / 1000000f)){
+			float dt = (float)(System.nanoTime() - time) / 1000000f;
+			time = System.nanoTime();
+			if (!game.update(dt, c.getWidth(), c.getHeight())){
 				game = new Game();
 				game.settings = sp;
+				game.gfx = androidgfx;
 			}
-			time = System.nanoTime();
 			sh.unlockCanvasAndPost(c);
 		}
 	}
-	/*
-	@Override
-	public void run(){
-		game.settings = sp;
-		time = System.nanoTime();
-		while (running){
-			dtleft += System.nanoTime() - time;
-			time = System.nanoTime();
-			while(dtleft >= FIXED_DT){
-				dtleft -= FIXED_DT;
-				Canvas c = sh.lockCanvas();
-				if (c == null){
-					running = false;
-					break;
-				}
-				c.drawColor(Color.WHITE);
-				if (!game.update(c, (float)FIXED_DT / 1000000f)){
-					game = new Game();
-					game.settings = sp;
-				}
-				sh.unlockCanvasAndPost(c);
-			}
-		}
-	}
-	 */
 }
