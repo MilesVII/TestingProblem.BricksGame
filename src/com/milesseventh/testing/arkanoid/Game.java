@@ -39,7 +39,7 @@ public class Game {
 	public boolean justTouched = false;
 	public Random r = new Random();
 	public DrawingAdapter gfx;
-	public int level = 18, score = 0, reservedBalls = RESERVED_BALLS_MAX / 2, accentColor = packColor(218, 64, 0);
+	public int level = 0, score = 0, reservedBalls = RESERVED_BALLS_MAX / 2, accentColor = packColor(218, 64, 0);
 	public float PADDLE_WR, SPEED, BALL_SPAWN_PROB;
 	
 	///////////////////////////////////////////////////////////////////////////////////
