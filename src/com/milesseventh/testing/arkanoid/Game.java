@@ -3,9 +3,6 @@ package com.milesseventh.testing.arkanoid;
 import java.util.ArrayList;
 import java.util.Random;
 
-import android.content.SharedPreferences;
-import android.content.SharedPreferences.Editor;
-
 public class Game {	
 	class Ball {
 		Vector position, direction;
@@ -39,8 +36,14 @@ public class Game {
 	public boolean justTouched = false;
 	public Random r = new Random();
 	public DrawingAdapter gfx;
+	public StateHandler sh;
 	public int level = 0, score = 0, reservedBalls = RESERVED_BALLS_MAX / 2, accentColor = packColor(218, 64, 0);
 	public float PADDLE_WR, SPEED, BALL_SPAWN_PROB;
+	
+	public Game(DrawingAdapter nda, StateHandler nsh){
+		gfx = nda;
+		sh = nsh;
+	}
 	
 	///////////////////////////////////////////////////////////////////////////////////
 	//Game events
@@ -62,7 +65,7 @@ public class Game {
 			paddleX = w / 2;
 			isGameStarted = true;
 			
-			if (load()){
+			if (sh.load()){
 				levelIsRunning = true;
 				isTitleShowing = false;
 				loadLevelParameters();
@@ -86,7 +89,7 @@ public class Game {
 		isPaused = true;
 		
 		if (level != 1)
-			save();
+			sh.save();
 	}
 	
 	public void loadLevelParameters(){
@@ -102,6 +105,7 @@ public class Game {
 	}
 
 	public boolean update(float dt, int w, int h){
+		//Vector.poolCallCounter = 0;
 		if (!isGameStarted)
 			onGameStart(w, h);
 		if (!levelIsRunning)
@@ -159,7 +163,7 @@ public class Game {
 				if (reservedBalls == 0){
 					//game is over
 					isPaused = true;
-					resetSave();
+					sh.resetSave();
 				} else {
 					--reservedBalls;
 					Ball ball = new Ball();
@@ -167,7 +171,7 @@ public class Game {
 					ball.direction = generateDirection();
 					balls.add(ball);
 					isPaused = true;
-					save();
+					sh.save();
 				}
 			}
 		}
@@ -191,7 +195,8 @@ public class Game {
 		} else
 			gfx.text(String.format("Level %3d | Balls available %1d | Score %4d | ", level, reservedBalls, score), 
 			         Vector.getVector(5, h - 5), COLOR_BLACK, false, 16);
-		
+
+		//Log.d("", "" + Vector.poolCallCounter);
 		return keepRunning;
 	}
 
@@ -447,7 +452,7 @@ public class Game {
 
 	SimplexNoise sn = new SimplexNoise();
 	public float getNoise(Vector v, float seed){
-		return remap((float)sn.eval(v.x / w * 6, v.y / h * 6, seed), -1f, 1f, 0f, 1f);
+		return remap((float)sn.eval(v.x / h * 6, v.y / h * 6, seed), -1f, 1f, 0f, 1f);
 	}
 	
 	public boolean isAnyBlocksLeft(){
@@ -523,61 +528,4 @@ public class Game {
 	/////////////////////////
 	//State handling
 	
-	SharedPreferences settings;
-	
-	public void save(){
-		if (!ANDROID_STATE_HANDLING_OVERRIDE)
-			return;
-		Editor e = settings.edit();
-		e.clear();
-		e.putInt("LVL", level);
-		for (int i = 0; i < blocks.length; ++i)
-			e.putInt("BLOCK " + i, blocks[i]);
-		e.putInt("B_COUNT", balls.size());
-		e.putInt("R_COUNT", reservedBalls);
-		e.putInt("SCORE", score);
-		e.putBoolean("HIGHLIGHT", isHighlightEnabled);
-		for (int i = 0; i < balls.size(); ++i){
-			e.putFloat("B " + i + "XP", balls.get(i).position.x);
-			e.putFloat("B " + i + "YP", balls.get(i).position.y);
-			
-			e.putFloat("B " + i + "XD", balls.get(i).direction.x);
-			e.putFloat("B " + i + "YD", balls.get(i).direction.y);
-		}
-		e.commit();
-	}
-	
-	public boolean load(){
-		if (!ANDROID_STATE_HANDLING_OVERRIDE)
-			return false;
-		int l = settings.getInt("LVL", -1);
-		
-		if (l == -1)
-			return false;
-		else
-			level = l;
-		for (int i = 0; i < blocks.length; ++i)
-			blocks[i] = settings.getInt("BLOCK " + i, blocks[i]);
-		int bcount = settings.getInt("B_COUNT", 0);
-		reservedBalls = settings.getInt("R_COUNT", 0);
-		score = settings.getInt("SCORE", 0);
-		isHighlightEnabled = settings.getBoolean("HIGHLIGHT", false);
-		for (int i = 0; i < bcount; ++i){
-			Ball b = new Ball();
-			b.position  = new Vector(settings.getFloat("B " + i + "XP", 0), settings.getFloat("B " + i + "YP", 0));
-			b.direction = new Vector(settings.getFloat("B " + i + "XD", 0), settings.getFloat("B " + i + "YD", 0));
-			balls.add(b);
-		}
-		
-		isPaused = true;
-		return true;
-	}
-	
-	public void resetSave(){
-		if (!ANDROID_STATE_HANDLING_OVERRIDE)
-			return;
-		Editor e = settings.edit();
-		e.clear();
-		e.commit();
-	}
 }

@@ -69,12 +69,13 @@ public class GameActivity extends Activity{
 		super.onCreate(savedInstanceState);
 		this.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
 		eyeless = new HarvesterOfEyes(this);
+		eyeless.setKeepScreenOn(true);
 		setContentView(eyeless);
 	}
 	
 	@Override
 	public void onBackPressed(){
 		eyeless.ml.game.isPaused = true;
-		eyeless.ml.game.save();
+		eyeless.ml.game.sh.save();
 	}
 }

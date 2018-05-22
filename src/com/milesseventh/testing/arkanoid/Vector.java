@@ -109,6 +109,8 @@ public class Vector {
 		return (float)Math.sqrt(x * x + y * y);
 	}
 
+	//public static long poolCallCounter = 0;
+	
 	//Vector pool
 	private static final int VECTORS_IN_POOL = 4096;
 	private static Vector[] vpool = new Vector[VECTORS_IN_POOL];
@@ -127,6 +129,7 @@ public class Vector {
 		holder = vectorsCounter;
 		++vectorsCounter;
 		vectorsCounter %= VECTORS_IN_POOL;
+		//++poolCallCounter;
 		return vpool[holder];
 	}
 }
