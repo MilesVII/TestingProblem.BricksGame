@@ -1,4 +1,4 @@
-package com.milesseventh.testing.arkanoid;
+package com.milesseventh.testing.arkanoid.android;
 
 import android.app.Activity;
 import android.content.Context;

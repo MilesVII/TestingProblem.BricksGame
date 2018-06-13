@@ -1,5 +1,9 @@
-package com.milesseventh.testing.arkanoid;
+package com.milesseventh.testing.arkanoid.android;
 
+import com.milesseventh.testing.arkanoid.DrawingAdapter;
+import com.milesseventh.testing.arkanoid.Game;
+import com.milesseventh.testing.arkanoid.StateHandler;
+import com.milesseventh.testing.arkanoid.Vector;
 import com.milesseventh.testing.arkanoid.Game.Ball;
 
 import android.content.SharedPreferences;

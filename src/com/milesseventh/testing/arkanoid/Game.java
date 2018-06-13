@@ -45,6 +45,12 @@ public class Game {
 		sh = nsh;
 	}
 	
+	// Input handling
+	public synchronized void clickEvent(float x, boolean justTouched) {
+		this.touch.x = x;
+		this.justTouched = justTouched;
+	}
+	
 	///////////////////////////////////////////////////////////////////////////////////
 	//Game events
 	
@@ -110,22 +116,27 @@ public class Game {
 			onGameStart(w, h);
 		if (!levelIsRunning)
 			onLevelStart();
-
-		if (justTouched){
-			if (isGameOver())
-				keepRunning = false;
-			else
-				isPaused = false;
-		}
-		justTouched = false;
-
+		
 		float minPaddlePosition = PADDLE_WR / 2f * w;
 		float maxPaddlePosition = w - PADDLE_WR / 2f * w;
-		if (touch.x >= 0){
-			isTitleShowing = false;
-			paddleX = clamp(touch.x, minPaddlePosition, maxPaddlePosition);
-			touch.x = -1;
+		
+		//Because input will go from different thread. Hope horsey will fix this
+		synchronized(this) {
+			if (justTouched){
+				if (isGameOver())
+					keepRunning = false;
+				else
+					isPaused = false;
+			}
+			justTouched = false;
+	
+			if (touch.x >= 0){
+				isTitleShowing = false;
+				paddleX = clamp(touch.x, minPaddlePosition, maxPaddlePosition);
+				touch.x = -1;
+			}
 		}
+		
 		if (isAutoplayEnabled && !isPaused){
 			//Override paddle position
 			float opp = findOptimalPaddlePosition();
