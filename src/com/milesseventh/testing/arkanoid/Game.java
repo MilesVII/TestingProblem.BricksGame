@@ -4,8 +4,9 @@ import java.util.ArrayList;
 import java.util.Random;
 
 public class Game {	
-	class Ball {
-		Vector position, direction;
+	public class Ball {
+		public Vector position;
+		public Vector direction;
 	}
 	
 	class CastResult {

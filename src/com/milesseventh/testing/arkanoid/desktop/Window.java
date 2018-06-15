@@ -136,7 +136,7 @@ public class Window {
 		canvas = new Canvas();
 		canvas.setSize(new Dimension(width, height));
 
-		frame = new JFrame("БлокКузуши");
+		frame = new JFrame("Seventh Block Kuzushi (ported by Liquor Pone)");
 
 		frame.getContentPane().add(canvas);
 		frame.setResizable(false);
@@ -150,6 +150,7 @@ public class Window {
 
 		drawingAPI = new DrawingAPI();
 		game = new Game(drawingAPI, new DummyStateHandler());
+		game.accentColor = Game.packColor(0, 153, 0);
 		inputHandler = new InputHandler(game);
 
 		canvas.addMouseListener(inputHandler);
@@ -164,6 +165,7 @@ public class Window {
 			// horsey is very silly and thinks that this is a reasonable way to
 			// restart a game
 			game = new Game(drawingAPI, new DummyStateHandler());
+			game.accentColor = Game.packColor(0, 153, 0);
 			inputHandler.setGame(game);
 		}
 
